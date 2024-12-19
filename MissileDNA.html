@@ -1,0 +1,820 @@
+<html><head><base href="https://SecretGame.ai">
+<title>WebSim.ai - Enhanced Missile Command Experience</title>
+<style>
+  body {
+    font-family: 'Courier New', monospace;
+    background-color: #000;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    color: #0f0;
+  }
+  
+  #game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background-image: url('https://cdn.glitch.global/fcf50ddf-49c3-45b3-8f99-27e65336a963/background.webp?v=1720800195093');
+    background-size: cover;
+    background-position: center;
+  }
+
+  #game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  #hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 18px;
+    text-shadow: 2px 2px 2px #000;
+  }
+
+  #game-over, #level-up, #congrats {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    color: #f00;
+    display: none;
+    text-align: center;
+    text-shadow: 2px 2px 2px #000;
+  }
+
+  #level-up {
+    color: #0f0;
+  }
+
+  #congrats {
+    color: #ff0;
+  }
+
+  #restart-button, #start-button {
+    position: absolute;
+    top: 60%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    padding: 10px 20px;
+    background-color: #0f0;
+    color: #000;
+    border: none;
+    cursor: pointer;
+    display: none;
+  }
+
+  #start-button {
+    display: block;
+    top: 85%;
+  }
+
+  #intro {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    color: #0f0;
+    white-space: pre;
+    text-align: center;
+    line-height: 1;
+    text-shadow: 2px 2px 2px #000;
+  }
+
+  #error-message {
+    display: none;
+  }
+
+  #upgrade-menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+  }
+
+  .upgrade-item {
+    margin: 10px 0;
+    padding: 5px;
+    background-color: #0f0;
+    color: #000;
+    border: none;
+    cursor: pointer;
+  }
+
+  .upgrade-item:disabled {
+    background-color: #666;
+    cursor: not-allowed;
+  }
+
+  #upgrade-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 18px;
+    padding: 5px 10px;
+    background-color: #0f0;
+    color: #000;
+    border: none;
+    cursor: pointer;
+  }
+
+  #mute-button {
+    padding: 10px;
+    background: #0f0;
+    border: none;
+    cursor: pointer;
+    z-index: 1000;
+  }
+
+  #mute-warning {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.8);
+    padding: 20px;
+    border-radius: 10px;
+    display: none;
+    z-index: 1001;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <canvas id="game-canvas"></canvas>
+  <div id="hud">Score: <span id="score">0</span> | Cities: <span id="cities">6</span> | Level: <span id="level">1</span> | Money: &#x24;<span id="money">0</span></div>
+  <div id="game-over">GAME OVER</div>
+  <div id="level-up">LEVEL UP!</div>
+  <div id="congrats">CONGRATULATIONS!<br>You&apos;ve completed all levels!</div>
+  <button id="restart-button">Restart</button>
+  <button id="start-button">Start Game</button>
+  <button id="upgrade-button">Upgrades</button>
+  
+  <div id="music-controls" style="position: fixed; bottom: 10px; width: 100%; text-align: center; z-index: 1000;">
+    <button id="mute-button">🔊</button>
+  </div>
+
+  <div id="mute-warning" style="display: none;">
+    <h2>Warning!</h2>
+    <p>You really should unmute to enjoy the full experience!</p>
+    <button id="close-warning">Fine, I'll unmute</button>
+  </div>
+
+  <div id="upgrade-menu">
+    <h2>Upgrades</h2>
+    <button class="upgrade-item" data-upgrade="fireRate">Increase Fire Rate (&#x24;100)</button>
+    <button class="upgrade-item" data-upgrade="explosionSize">Increase Explosion Size (&#x24;200)</button>
+    <button class="upgrade-item" data-upgrade="cityShield">City Shield (&#x24;500)</button>
+    <button id="close-upgrade-menu">Close</button>
+  </div>
+  <pre id="intro">
+===============&#x2592;&#x2588;&#x2588;&#x2588;&#x2588;&#x2588;==&#x2588;&#x2588;&#x2580;&#x2588;&#x2588;&#x2588;==&#x2588;&#x2588;&#x2593;&#x2592;&#x2588;&#x2588;&#x2588;&#x2588;&#x2588;==&#x2588;&#x2588;&#x2588;&#x2584;====&#x2588;===============
+==============&#x2592;&#x2588;&#x2588;&#x2592;==&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;=&#x2592;=&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;&#x2592;&#x2588;&#x2588;&#x2592;==&#x2588;&#x2588;&#x2592;&#x2588;&#x2588;=&#x2580;&#x2588;===&#x2588;===============
+==============&#x2592;&#x2588;&#x2588;&#x2591;==&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;=&#x2591;&#x2584;&#x2588;=&#x2592;&#x2588;&#x2588;&#x2592;&#x2588;&#x2588;&#x2591;==&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;==&#x2580;&#x2588;=&#x2588;&#x2588;&#x2592;==============
+==============&#x2592;&#x2588;&#x2588;===&#x2588;&#x2588;&#x2592;&#x2588;&#x2588;&#x2580;&#x2580;&#x2588;&#x2584;=&#x2591;&#x2588;&#x2588;&#x2592;&#x2588;&#x2588;===&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;&#x2592;==&#x2590;&#x258c;&#x2588;&#x2588;&#x2592;==============
+==============&#x2591;=&#x2588;&#x2588;&#x2588;&#x2588;&#x2593;&#x2592;&#x2591;&#x2588;&#x2588;&#x2593;=&#x2592;&#x2588;&#x2588;&#x2591;&#x2588;&#x2588;&#x2591;=&#x2588;&#x2588;&#x2588;&#x2588;&#x2593;&#x2592;&#x2592;&#x2588;&#x2588;&#x2591;===&#x2593;&#x2588;&#x2588;&#x2591;==============
+==============&#x2591;=&#x2592;&#x2591;&#x2592;&#x2591;&#x2592;&#x2591;&#x2591;=&#x2592;&#x2593;=&#x2591;&#x2592;&#x2593;&#x2591;&#x2593;=&#x2591;=&#x2592;&#x2591;&#x2592;&#x2591;&#x2592;&#x2591;&#x2591;=&#x2592;&#x2591;===&#x2592;=&#x2592;===============
+================&#x2591;=&#x2592;=&#x2592;&#x2591;==&#x2591;&#x2592;=&#x2591;=&#x2592;&#x2591;&#x2592;=&#x2591;=&#x2591;=&#x2592;=&#x2592;&#x2591;&#x2591;=&#x2591;&#x2591;===&#x2591;=&#x2592;&#x2591;==============
+==============&#x2591;=&#x2591;=&#x2591;=&#x2592;===&#x2591;&#x2591;===&#x2591;=&#x2592;=&#x2591;=&#x2591;=&#x2591;=&#x2592;====&#x2591;===&#x2591;=&#x2591;===============
+==================&#x2591;=&#x2591;====&#x2591;=====&#x2591;=====&#x2591;=&#x2591;==========&#x2591;===============
+==================================================================
+==&#x2588;&#x2588;&#x2588;&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;===&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;&#x2588;&#x2584;====&#x2588;&#x2593;&#x2588;&#x2588;&#x2588;&#x2588;&#x2588;&#x2584;=&#x2588;&#x2588;&#x2593;&#x2584;&#x2588;&#x2588;&#x2588;&#x2588;&#x2584;==&#x2584;&#x2584;&#x2584;====&#x2584;&#x2584;&#x2584;&#x2588;&#x2588;&#x2588;&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;&#x2588;&#x2588;&#x2588;=
+&#x2592;&#x2588;&#x2588;====&#x2592;&#x2592;&#x2588;&#x2588;==&#x2588;&#x2588;&#x2592;&#x2588;&#x2588;=&#x2580;&#x2588;===&#x2588;&#x2592;&#x2588;&#x2588;&#x2580;=&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;&#x2592;&#x2588;&#x2588;&#x2580;=&#x2580;&#x2588;=&#x2592;&#x2588;&#x2588;&#x2588;&#x2588;&#x2584;==&#x2593;==&#x2588;&#x2588;&#x2592;=&#x2593;&#x2593;&#x2588;===&#x2580;=
+&#x2591;=&#x2593;&#x2588;&#x2588;&#x2584;===&#x2592;&#x2588;&#x2588;=&#x2588;&#x2588;&#x2593;&#x2588;&#x2588;==&#x2580;&#x2588;=&#x2588;&#x2588;&#x2591;&#x2588;&#x2588;===&#x2588;&#x2592;&#x2588;&#x2588;&#x2592;&#x2593;&#x2588;====&#x2584;&#x2592;&#x2588;&#x2588;==&#x2580;&#x2588;&#x2584;&#x2592;=&#x2593;&#x2588;&#x2588;&#x2591;=&#x2592;&#x2592;&#x2588;&#x2588;&#x2588;===
+==&#x2592;===&#x2588;&#x2588;&#x2592;&#x2591;=&#x2590;&#x2588;&#x2588;&#x2593;&#x2593;&#x2588;&#x2588;&#x2592;==&#x2590;&#x258c;&#x2588;&#x2588;&#x2591;&#x2593;&#x2588;&#x2584;===&#x2591;&#x2588;&#x2588;&#x2592;&#x2593;&#x2593;&#x2584;=&#x2584;&#x2588;&#x2588;&#x2591;&#x2588;&#x2588;&#x2584;&#x2584;&#x2584;&#x2584;&#x2588;&#x2591;=&#x2593;&#x2588;&#x2588;&#x2593;=&#x2591;&#x2592;&#x2593;&#x2588;==&#x2584;=
+&#x2592;&#x2588;&#x2588;&#x2588;&#x2588;&#x2588;&#x2588;&#x2592;&#x2592;&#x2591;=&#x2588;&#x2588;&#x2592;&#x2593;&#x2592;&#x2588;&#x2588;&#x2591;===&#x2593;&#x2588;&#x2588;&#x2591;&#x2592;&#x2588;&#x2588;&#x2588;&#x2588;&#x2593;&#x2591;&#x2588;&#x2588;&#x2592;=&#x2593;&#x2588;&#x2588;&#x2588;&#x2580;=&#x2591;&#x2593;&#x2588;===&#x2593;&#x2588;&#x2588;&#x2592;&#x2592;&#x2588;&#x2588;&#x2592;=&#x2591;&#x2591;&#x2592;&#x2588;&#x2588;&#x2588;&#x2588;&#x2592;
+&#x2592;=&#x2592;&#x2593;&#x2592;=&#x2592;=&#x2591;=&#x2588;&#x2588;&#x2592;&#x2592;&#x2592;&#x2591;=&#x2592;&#x2591;===&#x2592;=&#x2592;=&#x2592;&#x2592;&#x2593;==&#x2592;&#x2591;&#x2593;=&#x2591;=&#x2591;&#x2592;=&#x2592;==&#x2591;&#x2592;&#x2592;===&#x2593;&#x2592;&#x2588;&#x2591;&#x2592;=&#x2591;&#x2591;==&#x2591;&#x2591;=&#x2592;&#x2591;=&#x2591;
+&#x2591;=&#x2591;&#x2592;==&#x2591;=&#x2593;&#x2588;&#x2588;=&#x2591;&#x2592;&#x2591;&#x2591;=&#x2591;&#x2591;===&#x2591;=&#x2592;&#x2591;&#x2591;=&#x2592;==&#x2592;=&#x2592;=&#x2591;=&#x2591;==&#x2592;====&#x2592;===&#x2592;&#x2592;=&#x2591;==&#x2591;====&#x2591;=&#x2591;==&#x2591;
+&#x2591;==&#x2591;==&#x2591;=&#x2592;=&#x2592;=&#x2591;&#x2591;====&#x2591;===&#x2591;=&#x2591;=&#x2591;=&#x2591;==&#x2591;=&#x2592;=&#x2591;=========&#x2591;===&#x2592;===&#x2591;========&#x2591;===
+======&#x2591;=&#x2591;=&#x2591;=============&#x2591;===&#x2591;====&#x2591;=&#x2591;=&#x2591;===========&#x2591;==&#x2591;=========&#x2591;==&#x2591;
+========&#x2591;=&#x2591;===============&#x2591;========&#x2591;==============================
+
+----------The VideoGame By------------ 
+
+     ____.                    .__          _____                               
+    |    | ____   ______ _____|__| ____   /     \   ____   ______ _________.__.\
+    |    |/ __ \ /  ___//  ___/  |/ __ \ /  \ /  \_/ __ \ /  ___//  ___&lt;   |  |
+/\__|    \  ___/ \___ \ \___ \|  \  ___//    Y    \  ___/ \___ \ \___ \ \___  |
+\________|\\___ &gt;____  &gt;____  &gt;__|\\___  &gt;____|__  /\\___  &gt;____  &gt;____  &gt;/ ____|
+              \/     \/     \/        \/        \/     \/     \/     \/ \/     
+  </pre>
+</div>
+
+<audio id="background-music" loop>
+  <source src="https://cdn.glitch.global/fcf50ddf-49c3-45b3-8f99-27e65336a963/Digital%20Defender.mp3?v=1734495643263" type="audio/mp3">
+</audio>
+
+<script>
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+const scoreElement = document.getElementById('score');
+const citiesElement = document.getElementById('cities');
+const levelElement = document.getElementById('level');
+const moneyElement = document.getElementById('money');
+const gameOverElement = document.getElementById('game-over');
+const levelUpElement = document.getElementById('level-up');
+const congratsElement = document.getElementById('congrats');
+const restartButton = document.getElementById('restart-button');
+const startButton = document.getElementById('start-button');
+const upgradeButton = document.getElementById('upgrade-button');
+const upgradeMenu = document.getElementById('upgrade-menu');
+const closeUpgradeMenu = document.getElementById('close-upgrade-menu');
+const introElement = document.getElementById('intro');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+let score = 0;
+let cities = 6;
+let level = 1;
+let money = 0;
+let missiles = [];
+let defenses = [];
+let explosions = [];
+let gameOver = false;
+let gameStarted = false;
+let volleySize = 3;
+let volleyCount = 0;
+let volleyDelay = 5000;
+let levelPause = false;
+let cityPositions = [];
+let basePositions = [];
+let fireRate = 1;
+let explosionSize = 1;
+let cityShieldActive = false;
+let isMuted = false;
+let audioFailed = false;
+let warningInterval;
+const cityImage = new Image();
+cityImage.src = 'https://cdn.glitch.global/fcf50ddf-49c3-45b3-8f99-27e65336a963/town.webp?v=1720798989617';
+const baseImage = new Image();
+baseImage.src = 'https://cdn.glitch.global/fcf50ddf-49c3-45b3-8f99-27e65336a963/MissleArcher.webp?v=1720799634709';
+const backgroundMusic = document.getElementById('background-music');
+backgroundMusic.loop = true;
+backgroundMusic.addEventListener('error', (e) => {
+  console.log('Audio loading failed:', e);
+  audioFailed = true;
+});
+function toggleMute() {
+  isMuted = !isMuted;
+  if (!audioFailed) {
+    try {
+      backgroundMusic.muted = isMuted;
+    } catch(e) {
+      console.log('Audio playback failed:', e);
+      audioFailed = true;
+    }
+  }
+  document.getElementById('mute-button').textContent = isMuted ? '🔇' : '🔊';
+  if (isMuted) {
+    startMuteWarnings();
+  } else {
+    clearInterval(warningInterval);
+    document.getElementById('mute-warning').style.display = 'none';
+  }
+}
+function startMuteWarnings() {
+  warningInterval = setInterval(() => {
+    document.getElementById('mute-warning').style.display = 'block';
+  }, 30000);
+}
+document.getElementById('mute-button').addEventListener('click', toggleMute);
+document.getElementById('close-warning').addEventListener('click', () => {
+  document.getElementById('mute-warning').style.display = 'none';
+  toggleMute();
+});
+class Missile {
+  constructor(x, y, targetX, targetY, speed) {
+    this.x = x;
+    this.y = y;
+    this.targetX = targetX;
+    this.targetY = targetY;
+    this.speed = speed;
+    this.angle = Math.atan2(targetY - y, targetX - x);
+  }
+  update() {
+    if (Math.hypot(this.targetX - this.x, this.targetY - this.y) > this.speed) {
+      this.x += Math.cos(this.angle) * this.speed;
+      this.y += Math.sin(this.angle) * this.speed;
+    } else {
+      this.x = this.targetX;
+      this.y = this.targetY;
+      explosions.push(new Explosion(this.x, this.y));
+      return true;
+    }
+    return false;
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    
+    // Draw missile body
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-20, 0);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#f00';
+    ctx.stroke();
+    
+    // Draw missile head
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-8, -4);
+    ctx.lineTo(-8, 4);
+    ctx.closePath();
+    ctx.fillStyle = '#ff0000';
+    ctx.fill();
+    
+    // Draw fins
+    ctx.beginPath();
+    ctx.moveTo(-15, 0);
+    ctx.lineTo(-20, -6);
+    ctx.lineTo(-15, -6);
+    ctx.moveTo(-15, 0);
+    ctx.lineTo(-20, 6);
+    ctx.lineTo(-15, 6);
+    ctx.strokeStyle = '#ff6666';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Add glow effect
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#f00';
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    
+    ctx.restore();
+  }
+}
+class MIRVMissile extends Missile {
+  constructor(x, y, targetX, targetY, speed) {
+    super(x, y, targetX, targetY, speed);
+    this.hasDeployed = false;
+    this.deploymentHeight = canvas.height * 0.4; // Deploy warheads at 40% of screen height
+    this.numWarheads = Math.floor(Math.random() * 2) + 2; // 2-3 warheads per MIRV
+  }
+
+  update() {
+    if (!this.hasDeployed && this.y >= this.deploymentHeight) {
+      this.deployWarheads();
+      return true;
+    }
+    return super.update();
+  }
+
+  deployWarheads() {
+    this.hasDeployed = true;
+    const spread = 100; // Spread distance between warheads
+    
+    for (let i = 0; i < this.numWarheads; i++) {
+      const offset = (i - (this.numWarheads - 1) / 2) * spread;
+      const newTargetX = this.targetX + offset;
+      missiles.push(new Missile(this.x, this.y, newTargetX, this.targetY, this.speed * 1.2));
+    }
+  }
+}
+
+// Modify spawnMissile function
+function spawnMissile() {
+  const x = Math.random() * canvas.width;
+  const targetCity = cityPositions[Math.floor(Math.random() * cityPositions.length)];
+  const speed = Math.random() * 0.5 + 0.5 + level * 0.1;
+  
+  // 30% chance of spawning a MIRV missile instead of regular missile
+  if (Math.random() < 0.3) {
+    missiles.push(new MIRVMissile(x, 0, targetCity.x, targetCity.y, speed));
+  } else {
+    missiles.push(new Missile(x, 0, targetCity.x, targetCity.y, speed));
+  }
+}
+
+function spawnVolley() {
+  if (gameOver || levelPause) return;
+  
+  // Check if there are any active missiles or explosions
+  if (missiles.length > 0 || explosions.length > 0) {
+    // Wait and check again in 1 second
+    setTimeout(spawnVolley, 1000);
+    return;
+  }
+
+  // Spawn new volley
+  for (let i = 0; i < volleySize; i++) {
+    setTimeout(spawnMissile, i * 500);
+  }
+  
+  volleyCount++;
+  if (volleyCount >= 3) {
+    levelPause = true;
+    setTimeout(() => {
+      level++;
+      levelElement.textContent = level;
+      volleySize += 2;
+      volleyDelay = Math.max(1000, volleyDelay - 500);
+      volleyCount = 0;
+      levelPause = false;
+      if (level <= 7) {
+        levelUpElement.style.display = 'block';
+        setTimeout(() => {
+          levelUpElement.style.display = 'none';
+        }, 2000);
+      } else {
+        gameOver = true;
+        congratsElement.style.display = 'block';
+        restartButton.style.display = 'block';
+        return;
+      }
+    }, 3000);
+  } else {
+    // Wait for all missiles to be cleared before starting next volley
+    setTimeout(() => {
+      if (!gameOver && !levelPause) {
+        spawnVolley();
+      }
+    }, volleyDelay);
+  }
+}
+
+class Defense {
+  constructor(x, y, targetX, targetY) {
+    this.x = x;
+    this.y = y;
+    this.targetX = targetX;
+    this.targetY = targetY;
+    this.speed = 5 * fireRate;
+    this.angle = Math.atan2(targetY - y, targetX - x);
+  }
+  update() {
+    if (Math.hypot(this.targetX - this.x, this.targetY - this.y) > this.speed) {
+      this.x += Math.cos(this.angle) * this.speed;
+      this.y += Math.sin(this.angle) * this.speed;
+    } else {
+      this.x = this.targetX;
+      this.y = this.targetY;
+      explosions.push(new Explosion(this.x, this.y));
+      return true;
+    }
+    return false;
+  }
+  draw() {
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    
+    // Draw missile body
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-15, 0);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#0f0';
+    ctx.stroke();
+    
+    // Draw missile head
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(-6, -3);
+    ctx.lineTo(-6, 3);
+    ctx.closePath();
+    ctx.fillStyle = '#00ff00';
+    ctx.fill();
+    
+    // Draw fins
+    ctx.beginPath();
+    ctx.moveTo(-12, 0);
+    ctx.lineTo(-15, -4);
+    ctx.lineTo(-12, -4);
+    ctx.moveTo(-12, 0);
+    ctx.lineTo(-15, 4);
+    ctx.lineTo(-12, 4);
+    ctx.strokeStyle = '#66ff66';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    
+    // Add glow effect
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#0f0';
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    
+    ctx.restore();
+  }
+}
+class Explosion {
+  constructor(x, y, isSecondary = false) {
+    this.x = x;
+    this.y = y;
+    this.radius = 0;
+    this.maxRadius = (isSecondary ? 40 : 60) * explosionSize;
+    this.growthRate = isSecondary ? 1 : 0.5;
+    this.shrinkRate = isSecondary ? 0.4 : 0.2;
+    this.alpha = 1;
+    this.color = isSecondary ? 'rgba(255, 100, 100,' : 'rgba(255, 255, 0,';
+  }
+  update() {
+    if (this.radius < this.maxRadius) {
+      this.radius += this.growthRate;
+    } else {
+      this.radius -= this.shrinkRate;
+      this.alpha -= 0.01;
+    }
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = `${this.color} ${this.alpha * 0.5})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(255, 165, 0, ${this.alpha})`;
+    ctx.stroke();
+  }
+}
+function spawnMissile() {
+  const x = Math.random() * canvas.width;
+  const targetCity = cityPositions[Math.floor(Math.random() * cityPositions.length)];
+  const speed = Math.random() * 0.5 + 0.5 + level * 0.1;
+  
+  // 30% chance of spawning a MIRV missile instead of regular missile
+  if (Math.random() < 0.3) {
+    missiles.push(new MIRVMissile(x, 0, targetCity.x, targetCity.y, speed));
+  } else {
+    missiles.push(new Missile(x, 0, targetCity.x, targetCity.y, speed));
+  }
+}
+function createSecondaryExplosions(x, y) {
+  const numSecondary = Math.floor(Math.random() * 3) + 2;
+  for (let i = 0; i < numSecondary; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * 30 + 20;
+    const newX = x + Math.cos(angle) * distance;
+    const newY = y + Math.sin(angle) * distance;
+    explosions.push(new Explosion(newX, newY, true));
+  }
+}
+function handleCollisions() {
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const explosion = explosions[i];
+    for (let j = missiles.length - 1; j >= 0; j--) {
+      const missile = missiles[j];
+      const distance = Math.hypot(missile.x - explosion.x, missile.y - explosion.y);
+      if (distance < explosion.radius) {
+        missiles.splice(j, 1);
+        score += 10;
+        money += 5;
+        scoreElement.textContent = score;
+        moneyElement.textContent = money;
+        createSecondaryExplosions(missile.x, missile.y);
+      }
+    }
+    if (explosion.alpha <= 0) {
+      explosions.splice(i, 1);
+    }
+  }
+  for (let i = missiles.length - 1; i >= 0; i--) {
+    const missile = missiles[i];
+    if (missile.update()) {
+      missiles.splice(i, 1);
+      for (let j = 0; j < cityPositions.length; j++) {
+        const city = cityPositions[j];
+        if (Math.hypot(missile.x - city.x, missile.y - city.y) < 30) {
+          if (!cityShieldActive) {
+            cityPositions.splice(j, 1);
+            cities--;
+            citiesElement.textContent = cities;
+            if (cities <= 0) {
+              gameOver = true;
+              gameOverElement.style.display = 'block';
+              restartButton.style.display = 'block';
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+  for (let i = defenses.length - 1; i >= 0; i--) {
+    const defense = defenses[i];
+    if (defense.update()) {
+      defenses.splice(i, 1);
+    }
+  }
+}
+function drawCities() {
+  for (const city of cityPositions) {
+    ctx.drawImage(cityImage, city.x - 30, city.y - 60, 60, 60);
+    if (cityShieldActive) {
+      ctx.beginPath();
+      ctx.arc(city.x, city.y - 30, 40, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+      ctx.stroke();
+    }
+  }
+}
+function drawBases() {
+  for (const base of basePositions) {
+    ctx.drawImage(baseImage, base.x - 20, base.y - 40, 40, 40);
+  }
+}
+function spawnVolley() {
+  if (gameOver || levelPause) return;
+  
+  // Check if there are any active missiles or explosions
+  if (missiles.length > 0 || explosions.length > 0) {
+    // Wait and check again in 1 second
+    setTimeout(spawnVolley, 1000);
+    return;
+  }
+
+  // Spawn new volley
+  for (let i = 0; i < volleySize; i++) {
+    setTimeout(spawnMissile, i * 500);
+  }
+  
+  volleyCount++;
+  if (volleyCount >= 3) {
+    levelPause = true;
+    setTimeout(() => {
+      level++;
+      levelElement.textContent = level;
+      volleySize += 2;
+      volleyDelay = Math.max(1000, volleyDelay - 500);
+      volleyCount = 0;
+      levelPause = false;
+      if (level <= 7) {
+        levelUpElement.style.display = 'block';
+        setTimeout(() => {
+          levelUpElement.style.display = 'none';
+        }, 2000);
+      } else {
+        gameOver = true;
+        congratsElement.style.display = 'block';
+        restartButton.style.display = 'block';
+        return;
+      }
+    }, 3000);
+  } else {
+    // Wait for all missiles to be cleared before starting next volley
+    setTimeout(() => {
+      if (!gameOver && !levelPause) {
+        spawnVolley();
+      }
+    }, volleyDelay);
+  }
+}
+function gameLoop() {
+  if (gameOver) {
+    backgroundMusic.pause();
+    return;
+  }
+  if (!gameStarted) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  missiles.forEach(missile => {
+    missile.draw();
+  });
+  defenses.forEach(defense => {
+    defense.draw();
+  });
+  explosions.forEach(explosion => {
+    explosion.update();
+    explosion.draw();
+  });
+  handleCollisions();
+  drawCities();
+  drawBases();
+  requestAnimationFrame(gameLoop);
+}
+function initializeCities() {
+  cityPositions = [];
+  basePositions = [];
+  const cityWidth = canvas.width / 7;
+  for (let i = 0; i < 6; i++) {
+    cityPositions.push({
+      x: cityWidth * (i + 1),
+      y: canvas.height - 30
+    });
+    if (i < 5) {
+      basePositions.push({
+        x: cityWidth * (i + 1.5),
+        y: canvas.height - 20
+      });
+    }
+  }
+}
+canvas.addEventListener('click', e => {
+  if (gameOver || !gameStarted) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+  let nearestBase = basePositions[0];
+  let minDistance = Infinity;
+  for (const base of basePositions) {
+    const distance = Math.hypot(x - base.x, y - base.y);
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestBase = base;
+    }
+  }
+  defenses.push(new Defense(nearestBase.x, nearestBase.y, x, y));
+});
+function restartGame() {
+  score = 0;
+  cities = 6;
+  level = 1;
+  money = 0;
+  missiles = [];
+  defenses = [];
+  explosions = [];
+  gameOver = false;
+  volleySize = 3;
+  volleyCount = 0;
+  volleyDelay = 5000;
+  levelPause = false;
+  scoreElement.textContent = score;
+  citiesElement.textContent = cities;
+  levelElement.textContent = level;
+  moneyElement.textContent = money;
+  gameOverElement.style.display = 'none';
+  congratsElement.style.display = 'none';
+  restartButton.style.display = 'none';
+  initializeCities();
+  spawnVolley();
+  gameLoop();
+  try {
+    if (!audioFailed && !isMuted) {
+      backgroundMusic.play();
+    }
+  } catch(e) {
+    console.log('Audio playback failed:', e);
+    audioFailed = true;
+  }
+}
+restartButton.addEventListener('click', restartGame);
+startButton.addEventListener('click', () => {
+  gameStarted = true;
+  startButton.style.display = 'none';
+  introElement.style.display = 'none';
+  try {
+    if (!audioFailed && !isMuted) {
+      backgroundMusic.play();
+    }
+  } catch(e) {
+    console.log('Audio playback failed:', e);
+    audioFailed = true; 
+  }
+  restartGame();
+});
+upgradeButton.addEventListener('click', () => {
+  upgradeMenu.style.display = 'block';
+});
+closeUpgradeMenu.addEventListener('click', () => {
+  upgradeMenu.style.display = 'none';
+});
+document.querySelectorAll('.upgrade-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const upgrade = item.dataset.upgrade;
+    let cost;
+    switch (upgrade) {
+      case 'fireRate':
+        cost = 100;
+        if (money >= cost) {
+          money -= cost;
+          fireRate += 0.1;
+        }
+        break;
+      case 'explosionSize':
+        cost = 200;
+        if (money >= cost) {
+          money -= cost;
+          explosionSize += 0.1;
+        }
+        break;
+      case 'cityShield':
+        cost = 500;
+        if (money >= cost) {
+          money -= cost;
+          cityShieldActive = true;
+          setTimeout(() => {
+            cityShieldActive = false;
+          }, 30000);
+        }
+        break;
+    }
+    moneyElement.textContent = money;
+  });
+});
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  initializeCities();
+});
+initializeCities();
+gameLoop();
+</script>
+</body></html>
